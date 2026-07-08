@@ -1,5 +1,5 @@
 # ---------------------------------------------------------------------------------------------------
-# Copyright (c) 2025 by Oliver Bründler
+# Copyright (c) 2025-2026 by Oliver Bründler
 # All rights reserved.
 # Authors: Oliver Bruendler
 # ---------------------------------------------------------------------------------------------------
@@ -10,6 +10,7 @@
 from .utils import named_config
 import sys
 import os
+from functools import partial
 
 # Import for fix cosimulations
 sys.path.append(os.path.join(os.path.dirname(__file__), '../../test'))
@@ -226,7 +227,9 @@ def add_configs(olo_tb):
             named_config(tb, {'AFmt_g': Format, 'Value_g': Value})
 
     ### olo_fix_pkg ###
-    # Does not need configuration
+    tb = olo_tb.test_bench('olo_fix_pkg_tb')
+    cosim = olo_fix_pkg.cosim.cosim
+    tb.add_config(name="default", pre_config=partial(cosim, generics={}))
 
     ### olo_fix_limit ###
     tb = olo_tb.test_bench('olo_fix_limit_tb')
@@ -568,7 +571,11 @@ def add_configs(olo_tb):
         for PreAdd in [False, True]:
             for MultRegs in [1, 3]:
                 for InBIsCoef in [False, True]:
-                    named_config(tb, {'PreAdd_g': PreAdd, 'Operation_g': Operation, 'MultRegs_g': MultRegs, 'InBIsCoef_g': InBIsCoef})
+                    if PreAdd:
+                        for PreAddOp in ['Add', 'Sub']:
+                            named_config(tb, {'PreAdd_g': PreAdd, 'PreAddOp_g': PreAddOp, 'Operation_g': Operation, 'MultRegs_g': MultRegs, 'InBIsCoef_g': InBIsCoef})
+                    else:
+                        named_config(tb, {'PreAdd_g': PreAdd, 'Operation_g': Operation, 'MultRegs_g': MultRegs, 'InBIsCoef_g': InBIsCoef})
 
     ### olo_fix_cplx_mult  ###
     tb = olo_tb.test_bench('olo_fix_cplx_mult_tb')  
@@ -586,6 +593,8 @@ def add_configs(olo_tb):
         'MultRegs_g': 1
     }
     cosim = olo_fix_cplx_mult.cosim.cosim
+
+    # named_config(tb, default_generics, pre_config=cosim, short_name='default')
 
     for Mode in ['MULT', 'MIX']:
         for IqHandling in ['Parallel', 'TDM']:
@@ -612,3 +621,177 @@ def add_configs(olo_tb):
 
     for ResetValid in ['True', 'False']:
             named_config(tb, {'ResetValid_g': ResetValid}) 
+
+    ### olo_fix_mov_avg ###
+    tb = olo_tb.test_bench('olo_fix_mov_avg_tb')
+    #Test formats and round/sat modes
+    default_generics = {
+        'InFmt_g': '(1,4,8)',
+        'OutFmt_g': '(1,4,8)',
+        'Taps_g' : 3,
+        'GainCorrCoefFmt_g': '(0,1,16)',
+        'GainCorrDataFmt_g': 'AUTO',
+        'GainCorrType_g': 'EXACT',
+        'Round_g': 'NonSymPos_s',
+        'Saturate_g': 'Sat_s',
+        'RoundReg_g': "YES",
+        'SatReg_g': "YES"
+    }
+    cosim = olo_fix_mov_avg.cosim.cosim
+
+    named_config(tb, default_generics, pre_config=cosim, short_name='default')
+
+    # Different taps
+    for Taps in [1, 5]:
+        named_config(tb, default_generics | {'Taps_g': Taps}, pre_config=cosim)
+    # Different gain correction formats
+    named_config(tb, default_generics | {'GainCorrCoefFmt_g': '(0,1,4)'}, pre_config=cosim)
+    # Different gain correctio ndata Formats (incl. overflow)
+    named_config(tb, default_generics | {'GainCorrDataFmt_g': '(1,0,8)'}, pre_config=cosim)
+    # Different gain correction types
+    for GainCorrType in ['EXACT', 'SHIFT', 'NONE']:
+        # Rounding mode
+        for Round in ['NonSymPos_s', 'Trunc_s']:
+            for Sat in ['Sat_s', 'None_s']:
+                named_config(tb, default_generics  | {'Round_g': Round, 'Saturate_g': Sat, 'GainCorrType_g': GainCorrType},
+                             pre_config=cosim)
+        # No regs
+        SatReg = 'AUTO'
+        RoundReg = 'NO'
+        named_config(tb, default_generics  | {'Round_g': Round, 'Saturate_g': Sat, 'GainCorrType_g': GainCorrType, 'RoundReg_g': RoundReg, 'SatReg_g': SatReg},
+                        pre_config=cosim)
+    # Test gain correction through shift for power2 taps
+    named_config(tb, default_generics | {'Taps_g': 4, 'GainCorrType_g': 'EXACT'}, pre_config=cosim)
+
+    ### olo_fix_mix_r2c ###
+    tb = olo_tb.test_bench('olo_fix_mix_r2c_tb')
+    default_generics = {
+        'InFmt_g'   : '(1,8,8)',
+        'MixFmt_g'  : '(1,0,15)',
+        'OutFmt_g'  : '(1,9,8)',
+        'Round_g'   : 'NonSymPos_s',
+        'Saturate_g': 'Sat_s',
+        'MultRegs_g': 1
+    }
+    cosim = olo_fix_mix_r2c.cosim.cosim
+    
+    for MultRegs in [1, 3]:
+        named_config(tb, default_generics | {'MultRegs_g': MultRegs}, pre_config=cosim)
+    for Round in ['Trunc_s', 'NonSymNeg_s']:
+        for Sat in ['None_s', 'SatWarn_s']:
+            named_config(tb, default_generics | {'Round_g': Round, 'Saturate_g': Sat}, pre_config=cosim)
+
+    ### olo_fix_mix_c2r ###
+    tb = olo_tb.test_bench('olo_fix_mix_c2r_tb')
+    default_generics = {
+        'InFmt_g'      : '(1,8,8)',
+        'MixFmt_g'     : '(1,0,15)',
+        'OutFmt_g'     : '(1,9,8)',
+        'Round_g'      : 'NonSymPos_s',
+        'Saturate_g'   : 'Sat_s',
+        'MultRegs_g'   : 1,
+        'IqHandling_g' : 'Parallel'
+    }
+    cosim = olo_fix_mix_c2r.cosim.cosim
+
+    for IqHandling in ['Parallel', 'TDM']:
+        for MultRegs in [1, 3]:
+            named_config(tb, default_generics | {'MultRegs_g': MultRegs, 'IqHandling_g': IqHandling}, pre_config=cosim)
+        for Round in ['Trunc_s', 'NonSymNeg_s']:
+            for Sat in ['None_s', 'SatWarn_s']:
+                named_config(tb, default_generics | {'Round_g': Round, 'Saturate_g': Sat, 'IqHandling_g': IqHandling}, pre_config=cosim)
+
+    ### olo_fix_coef_storage ###
+    tb = olo_tb.test_bench('olo_fix_coef_storage_tb')
+
+    for StorageType in ['ROM', 'RAM']:
+        for Latency in [1, 2]:
+            if StorageType == 'RAM':
+                for RamReadback in ['True', 'False']:
+                    for RamBehavior in ['RBW', 'WBR']:
+                         named_config(tb, {'StorageType_g': StorageType, 'RamReadback_g': RamReadback, 'RamBehavior_g': RamBehavior, 'RdLatency_g': Latency})
+            else: # ROM
+                named_config(tb, {'StorageType_g': StorageType, 'RdLatency_g': Latency})
+
+    ### olo_fix_fir_dec_ser_chtdm ###
+    tb = olo_tb.test_bench('olo_fix_fir_dec_ser_chtdm_tb')
+    default_generics = {
+        'InFmt_g'          : '(1,0,15)',
+        'OutFmt_g'         : '(1,-1,17)',
+        'CoefFmt_g'        : '(1,0,17)',
+        'CoefStorageType_g': 'ROM',
+        'CoefRamReadback_g': False,
+        'Channels_g'       : 2,
+        'Ratio_g'          : 4,
+        'Taps_g'           : 16,
+        'MultRegs_g'       : 1,
+        'RuntimeCfg_g'     : True,
+        'Round_g'          : 'NonSymPos_s',
+        'Saturate_g'       : 'Sat_s',
+        'WriteCoefs_g'     : 'False',
+        'GuardBits_g'      : 1
+    }
+    cosim = olo_fix_fir_dec_ser_chtdm.cosim.cosim
+
+    named_config(tb, default_generics, pre_config=cosim, short_name='default')
+
+    #Different single-settings
+    named_config(tb, default_generics | {'Channels_g': 4, 'Ratio_g': 3, 'Taps_g': 5, 'MultRegs_g': 2, 'RuntimeCfg_g': False}, pre_config=cosim, short_name='ch4-r3-taps5-regs2')
+    named_config(tb, default_generics | {'Ratio_g': 2}, pre_config=cosim, short_name='ratio2')
+
+    # Different coef-storage
+    named_config(tb, default_generics | {'CoefStorageType_g': 'RAM', 'WriteCoefs_g': True, 'CoefRamReadback_g': True}, pre_config=cosim, short_name='RAM-write')
+    named_config(tb, default_generics | {'CoefStorageType_g': 'RAM', 'WriteCoefs_g': False, 'CoefRamReadback_g': False}, pre_config=cosim, short_name='RAM-no-write')
+
+    # Round/Sat
+    for Round in ['Trunc_s', 'NonSymPos_s']:
+        for Sat in ['None_s', 'Sat_s']:
+            named_config(tb, default_generics | {'Round_g': Round, 'Saturate_g': Sat}, pre_config=cosim, short_name=f'Round={Round}-Sat={Sat}')
+
+    # Overflow
+    cosim_overflow = partial(cosim, test_mode='overflow')
+    named_config(tb, default_generics | {'OutFmt_g': '(1,-1,15)', 'Round_g': 'Trunc_s', 'Saturate_g': 'None_s', 'Taps_g': 13}, pre_config=cosim_overflow, short_name='Overflow')
+
+    ### olo_fix_fir_dec_ser_chpar ###
+    tb = olo_tb.test_bench('olo_fix_fir_dec_ser_chpar_tb')
+    default_generics = {
+        'InFmt_g'          : '(1,0,15)',
+        'OutFmt_g'         : '(1,-1,17)',
+        'CoefFmt_g'        : '(1,0,17)',
+        'CoefStorageType_g': 'ROM',
+        'CoefRamReadback_g': False,
+        'Channels_g'       : 2,
+        'Ratio_g'          : 4,
+        'Taps_g'           : 16,
+        'MultRegs_g'       : 1,
+        'RuntimeCfg_g'     : True,
+        'Round_g'          : 'NonSymPos_s',
+        'Saturate_g'       : 'Sat_s',
+        'WriteCoefs_g'     : 'False',
+        'GuardBits_g'      : 1
+    }
+    # The bit-true model and cosimulation are shared with olo_fix_fir_dec_ser_tdm (same filter math,
+    # per-channel stimulus/reference files are reused). Hence the cosim is called from there.
+    cosim = olo_fix_fir_dec_ser_chtdm.cosim.cosim
+
+    named_config(tb, default_generics, pre_config=cosim, short_name='default')
+
+    #Different single-settings
+    named_config(tb, default_generics | {'Channels_g': 1, 'Ratio_g': 3, 'Taps_g': 5, 'MultRegs_g': 2, 'RuntimeCfg_g': False}, pre_config=cosim, short_name='ch1-r3-taps5-regs2')
+    named_config(tb, default_generics | {'Channels_g': 4}, pre_config=cosim, short_name='ch4')
+    named_config(tb, default_generics | {'Ratio_g': 1}, pre_config=cosim, short_name='ratio1')
+
+    # Different coef-storage
+    named_config(tb, default_generics | {'CoefStorageType_g': 'RAM', 'WriteCoefs_g': True, 'CoefRamReadback_g': True}, pre_config=cosim, short_name='RAM-write')
+    named_config(tb, default_generics | {'CoefStorageType_g': 'RAM', 'WriteCoefs_g': False, 'CoefRamReadback_g': False}, pre_config=cosim, short_name='RAM-no-write')
+
+    # Round/Sat
+    for Round in ['Trunc_s', 'NonSymPos_s']:
+        for Sat in ['None_s', 'Sat_s']:
+            named_config(tb, default_generics | {'Round_g': Round, 'Saturate_g': Sat}, pre_config=cosim, short_name=f'Round={Round}-Sat={Sat}')
+
+    # Overflow
+    cosim_overflow = partial(cosim, test_mode='overflow')
+    named_config(tb, default_generics | {'OutFmt_g': '(1,-1,15)', 'Round_g': 'Trunc_s', 'Saturate_g': 'None_s', 'Taps_g': 13}, pre_config=cosim_overflow, short_name='Overflow')
+
+

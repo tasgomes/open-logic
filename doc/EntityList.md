@@ -29,7 +29,9 @@ Note that components are split into categories.
     - [Basic Operations](#basic-operations)
     - [Simple Mathematics](#simple-mathematics)
     - [CORDIC](#cordic)
+    - [Mixers](#mixers)
     - [CIC Filters](#cic-filters)
+    - [FIR Filters](#fir-filters)
     - [Miscellaneous](#miscellaneous-1)
 
 ## base
@@ -242,6 +244,14 @@ be used. For deciding which option to use, the following considerations shall be
 
 ### CORDIC
 
+| Entity                                                | Description                                                  |
+| ----------------------------------------------------- | ------------------------------------------------------------ |
+| [olo_fix_cplx_mult](./fix/olo_fix_cplx_mult.md)       | Can be used as complex-to-complex mixer in MIX mode |
+| [olo_fix_mix_r2c](./fix/olo_fix_mix_r2c.md)           | Real to complex mixer. Mixes a real signal with a complex local oscillator |
+| [olo_fix_mix_c2r](./fix/olo_fix_mix_c2r.md)           | Complex to real mixer. Mixes a complex signal with a complex local oscillator to produce a real output |
+
+### Mixers
+
 | Entity                                              | Description                                                  |
 | --------------------------------------------------- | ------------------------------------------------------------ |
 | [olo_fix_cordic_vect](./fix/olo_fix_cordic_vect.md) | CORDIC vectoring mode - cartesian to polar conversion |
@@ -254,8 +264,23 @@ be used. For deciding which option to use, the following considerations shall be
 | [olo_fix_cic_dec_tdm](./fix/olo_fix_cic_dec_tdm.md)         | CIC decimator (TDM input, TDM output), single- or multi-channel, ratio fixed or runtime configurable               |
 | [olo_fix_cic_dec_par_tdm](./fix/olo_fix_cic_dec_par_tdm.md) | CIC decimator (parallel input, TDM output), single- or multi-channel, ratio fixed or runtime configurable          |
 
+### FIR Filters
+
+Naming convention: _olo_fix_fir\_<dec/int\>\_\<ser/par/semi\>\_ch\<tdm/par\>_
+
+- dec/int: decimating or interpolating FIR filter
+- ser/par/semi: Tap processing (serial, parallel or semi-parallel)
+- tdm/par: TDM or parallel channel handling on input and output
+
+| Entity                                                      | Description                                                                                                        |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| [olo_fix_fir_dec_ser_chtdm](./fix/olo_fix_fir_dec_ser_chtdm.md) | Decimating FIR filter (TDM channels, serial tap computation), multi-channel only (not usable for single-channel) <br> Runtime-configurable or fixed ratio, tap count and coefficients - Can be used non-decimating (Ratio = 1)  |
+| [olo_fix_fir_dec_ser_chpar](./fix/olo_fix_fir_dec_ser_chpar.md) | Decimating FIR filter (parallel channels, serial tap computation), single- or multi-channel (one multiplier per channel) <br> Runtime-configurable or fixed ratio, tap count and coefficients - Can be used non-decimating (Ratio = 1) |
+
 ### Miscellaneous
 
 | Entity                                              | Description                                                                                              |
 | --------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| [olo_fix_sample_hold](./fix/olo_fix_sample_hold.md) | Sample and hold a fixed point number - output holds the last sampled value until a new sample is taken.  |
+| [olo_fix_coef_storage](./fix/olo_fix_coef_storage.md) | Fixed-point coefficient storage - ROM or RAM with Coef read port and optional Cfg write/readback port. |
+| [olo_fix_sample_hold](./fix/olo_fix_sample_hold.md)   | Sample and hold a fixed point number - output holds the last sampled value until a new sample is taken.  |
+| [olo_fix_mov_avg](./fix/olo_fix_mov_avg.md)           | Moving average filter                                                                                    |
